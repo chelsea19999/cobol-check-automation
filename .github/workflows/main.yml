@@ -20,27 +20,19 @@ jobs:
           distribution: temurin
           java-version: '11'
 
-      - name: Install Zowe CLI
-        run: npm install -g @zowe/cli
-
-      - name: Configure Zowe CLI
+      - name: Run COBOL Check
         env:
           ZOWE_USERNAME: ${{ secrets.ZOWE_USERNAME }}
           ZOWE_PASSWORD: ${{ secrets.ZOWE_PASSWORD }}
-          ZOWE_HOST: ${{ secrets.ZOWE_HOST }}
-          ZOWE_PORT: ${{ secrets.ZOWE_PORT }}
         run: |
-          zowe config init --global-config
-          zowe config set profiles.base.host "$ZOWE_HOST"
-          zowe config set profiles.base.port "$ZOWE_PORT"
-          zowe config set profiles.base.user "$ZOWE_USERNAME"
-          zowe config set profiles.base.password "$ZOWE_PASSWORD"
-          zowe config set profiles.base.rejectUnauthorized false
+          echo "Running COBOL Check"
+          # Add actual COBOL Check commands here
 
-      - name: Run Zowe operations
+      - name: Setup Mainframe Environment and Upload COBOL Check
         env:
           ZOWE_USERNAME: ${{ secrets.ZOWE_USERNAME }}
           ZOWE_PASSWORD: ${{ secrets.ZOWE_PASSWORD }}
+          
         run: |
           chmod +x .github/scripts/zowe_operations.sh
           .github/scripts/zowe_operations.sh
