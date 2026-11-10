@@ -4,83 +4,26 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   cobol-check:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Download your GitHub repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Install Java
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '11'
 
-      # 3. Install Zowe CLI
-      - name: Install Zowe CLI
-        run: |
-          npm install --global @zowe/cli
-          zowe --version
-
-      # 4. Configure Zowe CLI connection
-      - name: Configure z/OSMF connection
+      - name: Run COBOL Check
         env:
-          ZOWE_HOST: ${{ secrets.ZOWE_HOST }}
-          ZOWE_PORT: ${{ secrets.ZOWE_PORT }}
           ZOWE_USERNAME: ${{ secrets.ZOWE_USERNAME }}
           ZOWE_PASSWORD: ${{ secrets.ZOWE_PASSWORD }}
-        run: |
-          mkdir -p "$HOME/.zowe"
-
-          node <<'NODE'
-          const fs = require('fs');
-          const path = require('path');
-
-          const config = {
-            "$schema": "./zowe.schema.json",
-            "profiles": {
-              "zosmf": {
-                "type": "zosmf",
-                "properties": {
-                  "host": process.env.ZOWE_HOST,
-                  "port": Number(process.env.ZOWE_PORT),
-                  "user": process.env.ZOWE_USERNAME,
-                  "password": process.env.ZOWE_PASSWORD,
-                  "rejectUnauthorized": false
-                }
-              }
-            },
-            "defaults": {
-              "zosmf": "zosmf"
-            }
-          };
-
-          const configPath = path.join(
-            process.env.HOME,
-            '.zowe',
-            'zowe.config.json'
-          );
-
-          fs.writeFileSync(
-            configPath,
-            JSON.stringify(config, null, 2),
-            { mode: 0o600 }
-          );
-          NODE
-
-      # 5. Check connection to IBM z/OS
-      - name: Test z/OSMF connection
-        run: |
-          zowe zosmf check status
-
-      # 6. Upload COBOL Check files to USS
-      - name: Upload COBOL Check to IBM Z
+        
         run: |
           chmod +x .github/scripts/zowe_operations.sh
           .github/scripts/zowe_operations.sh
