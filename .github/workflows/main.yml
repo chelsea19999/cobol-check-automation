@@ -1,4 +1,4 @@
-
+```yaml
 name: COBOL Check Automation
 
 on:
@@ -12,56 +12,76 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repository
+      # 1. Download your GitHub repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Set up Java
+      # 2. Install Java
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '11'
 
-      # Step 3: Install Zowe CLI
+      # 3. Install Zowe CLI
       - name: Install Zowe CLI
         run: |
-          npm install -g @zowe/cli
+          npm install --global @zowe/cli
           zowe --version
 
-      # Step 4: Configure IBM Z Xplore connection
-      - name: Configure IBM Z Xplore
+      # 4. Configure Zowe CLI connection
+      - name: Configure z/OSMF connection
         env:
-          ZOWE_USERNAME: ${{ secrets.ZOWE_USERNAME }}
-          ZOWE_PASSWORD: ${{ secrets.ZOWE_PASSWORD }}
           ZOWE_HOST: ${{ secrets.ZOWE_HOST }}
           ZOWE_PORT: ${{ secrets.ZOWE_PORT }}
+          ZOWE_USERNAME: ${{ secrets.ZOWE_USERNAME }}
+          ZOWE_PASSWORD: ${{ secrets.ZOWE_PASSWORD }}
         run: |
-          if [ -z "$ZOWE_HOST" ]; then
-            echo "ERROR: ZOWE_HOST is missing"
-            exit 1
-          fi
+          mkdir -p "$HOME/.zowe"
 
-          if [ -z "$ZOWE_USERNAME" ] || [ -z "$ZOWE_PASSWORD" ]; then
-            echo "ERROR: Zowe credentials are missing"
-            exit 1
-          fi
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
 
-          zowe profiles create zosmf zxplore \
-            --host "$ZOWE_HOST" \
-            --port "$ZOWE_PORT" \
-            --user "$ZOWE_USERNAME" \
-            --password "$ZOWE_PASSWORD" \
-            --reject-unauthorized false
+          const config = {
+            "$schema": "./zowe.schema.json",
+            "profiles": {
+              "zosmf": {
+                "type": "zosmf",
+                "properties": {
+                  "host": process.env.ZOWE_HOST,
+                  "port": Number(process.env.ZOWE_PORT),
+                  "user": process.env.ZOWE_USERNAME,
+                  "password": process.env.ZOWE_PASSWORD,
+                  "rejectUnauthorized": false
+                }
+              }
+            },
+            "defaults": {
+              "zosmf": "zosmf"
+            }
+          };
 
-          echo "Zowe profile created successfully."
+          const configPath = path.join(
+            process.env.HOME,
+            '.zowe',
+            'zowe.config.json'
+          );
 
-      # Step 5: Test z/OSMF connection
-      - name: Test IBM Z Xplore connection
+          fs.writeFileSync(
+            configPath,
+            JSON.stringify(config, null, 2),
+            { mode: 0o600 }
+          );
+          NODE
+
+      # 5. Check connection to IBM z/OS
+      - name: Test z/OSMF connection
         run: |
-          echo "Testing connection to IBM Z Xplore..."
+          zowe zosmf check status
 
-          zowe zosmf check status \
-            --zosmf-profile zxplore
-
-          echo "Connection test completed."
+      # 6. Upload COBOL Check files to USS
+      - name: Upload COBOL Check to IBM Z
+        run: |
+          chmod +x .github/scripts/zowe_operations.sh
+          .github/scripts/zowe_operations.sh
